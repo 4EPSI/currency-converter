@@ -1,49 +1,66 @@
 <template>
-  <div class="converter">
-    <h1>Валютный конвертер</h1>
+  <div class="demo-wrapper">
+    <div class="controls">
+      <label>
+        Значение прогресса: {{ progress }}%
+        <input type="range" min="0" max="100" v-model.number="progress" />
+      </label>
 
-    <div class="form">
-      <input v-model="amount" type="number" placeholder="Сумма" />
+      <label>
+        Статус:
+        <select v-model="status">
+          <option value="in-progress">In Progress</option>
+          <option value="success">Success</option>
+          <option value="warning">Warning</option>
+          <option value="error">Error</option>
+        </select>
+      </label>
 
-      <select v-model="fromCurrency">
-        <option value="USD">USD</option>
-        <option value="EUR">EUR</option>
-        <option value="RUB">RUB</option>
-      </select>
-
-      <select v-model="toCurrency">
-        <option value="USD">USD</option>
-        <option value="EUR">EUR</option>
-        <option value="RUB">RUB</option>
-      </select>
-
-      <button @click="convert">Конвертировать</button>
+      <label>
+        <input type="checkbox" v-model="isDashboard" /> Режим dashboard
+      </label>
     </div>
 
-    <div class="result" v-if="result !== null">
-      <p>{{ amount }} {{ fromCurrency }} = {{ result }} {{ toCurrency }}</p>
-    </div>
+    <ProgressCircle
+      :percentage="progress"
+      :status="status"
+      :mode="isDashboard ? 'dashboard' : 'default'"
+    />
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref } from 'vue';
+<script setup>
+import { ref } from 'vue'
+import ProgressCircle from '~/components/ProgressCircle.vue'
 
-const amount = ref<number | null>(null)
-const fromCurrency = ref('USD')
-const toCurrency = ref('EUR')
-const result = ref<number | null>(null)
-
-
-const convert = async () => {
-  if (!amount.value) return
-
-  try {
-    const res = await fetch(`https://api.exchangerate.host/convert?from=${fromCurrency.value}&to=${toCurrency.value}&amount=${amount.value}`)
-    const data = await res.json()
-    result.value = data.result
-  } catch (error) {
-    console.error('Ошибка при получении курса:', error)
-  }
-}
+const progress = ref(0)
+const status = ref('in-progress')
+const isDashboard = ref(false)
 </script>
+
+<style scoped>
+.demo-wrapper {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  font-family: sans-serif;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+input[type='range'] {
+  width: 300px;
+}
+
+select {
+  padding: 0.25rem;
+  font-size: 1rem;
+}
+</style>
