@@ -1,102 +1,175 @@
-  <template>
-    <div :class="['progress-container', mode]">
-      <svg viewBox="0 0 100 100" class="progress-ring">
-        <circle
-          class="progress-ring__bg"
-          cx="50" cy="50" r="45"
-          fill="transparent"
-          stroke="#eee"
-          stroke-width="10"
-        />
-        <circle
-          class="progress-ring__circle"
-          cx="50" cy="50" r="45"
-          fill="transparent"
-          :stroke="strokeColor"
-          stroke-width="10"
-          stroke-linecap="round"
-          :stroke-dasharray="2 * Math.PI * 45"
-          :stroke-dashoffset="strokeOffset"
-        />
-      </svg>
-      <div class="progress-content">
-        <template v-if="status === 'success'">✓</template>
-        <template v-else-if="status === 'warning'">!</template>
-        <template v-else-if="status === 'error'">✗</template>
-        <template v-else>{{ percentage }}%</template>
-      </div>
-    </div>
-  </template>
+<template>
+  <div class="progress-bar" :class="{ dashboard: type === 'dashboard' }">
+    <svg :width="size" :height="size">
+      <circle
+        cx="50%"
+        cy="50%"
+        :r="radius"
+        fill="none"
+        stroke="#E0E0E0"
+        :stroke-width="strokeWidth"
+      />
+      <circle
+        ref="progressCircle"
+        cx="50%"
+        cy="50%"
+        :r="radius"
+        fill="none"
+        :stroke="currentColor"
+        :stroke-width="strokeWidth"
+        stroke-linecap="round"
+        :stroke-dasharray="circumference"
+        :stroke-dashoffset="strokeDashoffset"
+        class="progress-circle"
+      />
+      <text x="50%" y="50%" text-anchor="middle" dy=".3em" class="progress-text">
+        {{ Math.round(animatedProgress) }}%
+        <tspan v-if="state === 'success'" class="icon">✓</tspan>
+        <tspan v-if="state === 'warning'" class="icon">⚠</tspan>
+        <tspan v-if="state === 'error'" class="icon">✗</tspan>
+      </text>
+    </svg>
+  </div>
+</template>
 
-  <script setup>
-  import { computed } from 'vue'
-  const props = defineProps({
-    percentage: {
+<script>
+import { ref, computed, watch, onMounted } from 'vue';
+
+export default {
+  name: 'CircularProgressBar',
+  props: {
+    progress: {
       type: Number,
-      required: true
+      default: 0, // Установлен дефолт, чтобы избежать ошибки
+      validator: (value) => value >= 0 && value <= 100,
     },
-    status: {
+    state: {
       type: String,
-      default: 'in-progress'
+      default: 'in progress',
+      validator: (value) => ['in progress', 'success', 'warning', 'error'].includes(value),
     },
-    mode: {
+    type: {
       type: String,
-      default: 'default'
-    }
-  })
+      default: 'form',
+      validator: (value) => ['form', 'dashboard'].includes(value),
+    },
+    size: {
+      type: Number,
+      default: 100,
+    },
+  },
+  setup(props) {
+    const progressCircle = ref(null);
+    const animatedProgress = ref(0);
+    const animatedColor = ref({ r: 255, g: 0 });
 
-  const radius = 45
-  const circumference = 2 * Math.PI * radius
+    const radius = computed(() => (props.size / 2) * 0.8);
+    const circumference = computed(() => 2 * Math.PI * radius.value);
+    const strokeWidth = computed(() => (props.type === 'dashboard' ? 10 : 5));
 
-  const strokeOffset = computed(() => {
-    return circumference - (props.percentage / 100) * circumference
-  })
+    const currentColor = computed(() => {
+      if (props.state !== 'in progress') {
+        switch (props.state) {
+          case 'success':
+            return '#32CD32';
+          case 'warning':
+            return '#FFD700';
+          case 'error':
+            return '#FF4500';
+          default:
+            return '#1E90FF';
+        }
+      }
+      return `rgb(${animatedColor.value.r}, ${animatedColor.value.g}, 0)`;
+    });
 
-  const strokeColor = computed(() => {
-    if (props.status === 'success') return '#4caf50'
-    if (props.status === 'warning') return '#ffa500'
-    if (props.status === 'error') return '#f44336'
-    const red = Math.round(255 - 2.55 * props.percentage)
-    const green = Math.round(2.55 * props.percentage)
-    return `rgb(${red}, ${green}, 0)`
-  })
-  </script>
+    const strokeDashoffset = computed(() =>
+      circumference.value * (1 - animatedProgress.value / 100)
+    );
 
-  <style scoped>
-  .progress-container {
-    position: relative;
-    width: 120px;
-    height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+    const animateProgress = (targetProgress) => {
+      let startProgress = animatedProgress.value;
+      let startTime = null;
 
-  .progress-container.dashboard {
-    width: 160px;
-    height: 100px;
-  }
+      const animate = (timestamp) => {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min(1, (timestamp - startTime) / 500);
+        animatedProgress.value = startProgress + (targetProgress - startProgress) * progress;
 
-  .progress-ring {
-    transform: rotate(-90deg);
-    width: 100%;
-    height: 100%;
-  }
+        const targetR = 255 * (1 - targetProgress / 100);
+        const targetG = 255 * (targetProgress / 100);
+        animatedColor.value.r = Math.round(
+          animatedColor.value.r + (targetR - animatedColor.value.r) * progress
+        );
+        animatedColor.value.g = Math.round(
+          animatedColor.value.g + (targetG - animatedColor.value.g) * progress
+        );
 
-  .progress-ring__circle {
-    transition: stroke-dashoffset 0.5s ease, stroke 0.5s ease;
-    transform: rotate(0deg);
-    transform-origin: 50% 50%;
-  }
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        }
+      };
+      requestAnimationFrame(animate);
+    };
 
-  .progress-content {
-    position: absolute;
-    font-size: 1.2em;
-    font-weight: bold;
-  }
+    onMounted(() => {
+      const clampedProgress = Math.max(0, Math.min(100, props.progress));
+      animatedProgress.value = 0;
+      animatedColor.value = { r: 255, g: 0 };
+      animateProgress(clampedProgress);
+    });
 
-  .progress-container.dashboard .progress-content {
-    bottom: 0;
-    top: auto;
-  }
-  </style>
+    watch(
+      () => props.progress,
+      (newProgress) => {
+        const clampedProgress = Math.max(0, Math.min(100, newProgress));
+        animateProgress(clampedProgress);
+      }
+    );
+
+    watch(
+      () => props.state,
+      () => {
+        if (progressCircle.value) {
+          progressCircle.value.style.transition = 'stroke 0.3s ease';
+          setTimeout(() => (progressCircle.value.style.transition = ''), 300);
+        }
+      }
+    );
+
+    return {
+      progressCircle,
+      radius,
+      circumference,
+      strokeWidth,
+      currentColor,
+      strokeDashoffset,
+      animatedProgress,
+    };
+  },
+};
+</script>
+
+<style scoped>
+.progress-bar {
+  position: relative;
+  display: inline-block;
+}
+.progress-circle {
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dashoffset 0.5s ease;
+}
+.progress-text {
+  font-size: 16px;
+  font-weight: bold;
+  fill: #333;
+  font-family: Arial, sans-serif;
+}
+.icon {
+  font-size: 20px;
+}
+.dashboard .progress-text {
+  font-size: 20px;
+}
+</style>

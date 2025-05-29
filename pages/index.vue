@@ -1,66 +1,74 @@
 <template>
-  <div class="demo-wrapper">
-    <div class="controls">
-      <label>
-        Значение прогресса: {{ progress }}%
-        <input type="range" min="0" max="100" v-model.number="progress" />
-      </label>
-
-      <label>
-        Статус:
-        <select v-model="status">
-          <option value="in-progress">In Progress</option>
-          <option value="success">Success</option>
-          <option value="warning">Warning</option>
-          <option value="error">Error</option>
-        </select>
-      </label>
-
-      <label>
-        <input type="checkbox" v-model="isDashboard" /> Режим dashboard
-      </label>
+  <div class="app">
+    <h1>Демонстрация кругового прогресс-бара</h1>
+    <div class="progress-container">
+      <CircularProgressBar
+        v-for="(item, index) in progressItems"
+        :key="index"
+        :progress="item.progress"
+        :state="item.state"
+        :type="progressType"
+      />
     </div>
-
-    <ProgressCircle
-      :percentage="progress"
-      :status="status"
-      :mode="isDashboard ? 'dashboard' : 'default'"
-    />
+    <div class="controls">
+      <button @click="toggleProgressType">Сменить тип: {{ progressType }}</button>
+      <button @click="updateProgress">Обновить прогресс</button>
+    </div>
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
-import ProgressCircle from '~/components/ProgressCircle.vue'
+<script>
+import { ref } from 'vue';
+import CircularProgressBar from '../components/ProgressCircle.vue';
 
-const progress = ref(0)
-const status = ref('in-progress')
-const isDashboard = ref(false)
+export default {
+  name: 'App',
+  components: { CircularProgressBar },
+  setup() {
+    const progressType = ref('form');
+    const progressItems = ref([
+      { progress: 0, state: 'in progress' },
+      { progress: 25, state: 'in progress' },
+      { progress: 50, state: 'success' },
+      { progress: 75, state: 'warning' },
+      { progress: 100, state: 'error' },
+    ]);
+
+    const toggleProgressType = () => {
+      progressType.value = progressType.value === 'form' ? 'dashboard' : 'form';
+    };
+
+    const updateProgress = () => {
+      progressItems.value = progressItems.value.map((item) => ({
+        ...item,
+        progress: Math.floor(Math.random() * 101),
+      }));
+    };
+
+    return { progressType, toggleProgressType, progressItems, updateProgress };
+  },
+};
 </script>
 
-<style scoped>
-.demo-wrapper {
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2rem;
-  font-family: sans-serif;
+<style>
+.app {
+  text-align: center;
+  padding: 20px;
 }
-
+.progress-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
 .controls {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  align-items: flex-start;
+  margin-top: 20px;
 }
-
-input[type='range'] {
-  width: 300px;
-}
-
-select {
-  padding: 0.25rem;
-  font-size: 1rem;
+button {
+  margin: 0 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
 }
 </style>
